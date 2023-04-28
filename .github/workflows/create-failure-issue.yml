@@ -34,6 +34,10 @@ jobs:
     permissions:
       issues: write 
     steps:
+      - name: Print Issues Titles
+        run: |
+          echo ${{ github.event.inputs.title }}
+          echo ${{ github.event.inputs.description }}
       - name: Create issue using REST API
         run: |
           curl --request POST \
