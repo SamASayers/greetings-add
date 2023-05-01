@@ -8,10 +8,10 @@ on:
   workflow_call:
     inputs:
       title:
-        description: 'A username passed from the caller workflow'
+        required: true
         type: string
-      body:
-        description: 'test'
+      body: 
+        required: true
         type: string
         
 
