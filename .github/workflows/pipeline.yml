@@ -8,10 +8,12 @@
 name: Simple Pipe
 
 on:
+  # Other options include workflow_call, schedule
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  # this is for a manual run passing in variables
   workflow_dispatch:
     inputs:
       myVersion:
@@ -32,6 +34,7 @@ jobs:
       artifact-path: ${{ steps.setoutput.outputs.jarpath }}
 
     steps:
+    # Clones the branch where the action is triggered from so pull_requests would come from the branch to master
     - uses: actions/checkout@v3
     - name: Set up JDK 11
       uses: actions/setup-java@v3
@@ -43,12 +46,14 @@ jobs:
       with:
         arguments: build
         
+    # This is setting the enviornment variable and can be done instead of setting the GitHub Secrets variable
     - name: Set timestamp
       run: echo TDS=$(date +'%Y-%m-%dT%H-%M-%S') >> $GITHUB_ENV
     
     - name: Tag artifact
       run: mv build/libs/greetings-add.jar build/libs/greetings-add-${{github.event.inputs.myVersion }}${{ env.TDS }}.jar
     
+    # This is using an action that uploads an artifact to the workflow. We can see that you just upload files instead of having to do future checkouts
     - name: Upload Artifact
       uses: actions/upload-artifact@v3
       with:
@@ -60,7 +65,9 @@ jobs:
     - name: Set output
       id: setoutput
       run: echo jarpath=build/libs/greetings-add-${{ github.event.inputs.myVersion}}${{ env.TDS }}.jar >> $GITHUB_OUTPUT
-      
+  
+  # This is a great example of showing you can name your job anything
+  # Each Job uses a new machine, so passing artifacts is a way to by pass that 
   print-build-output:
     runs-on: ubuntu-latest
     
@@ -68,11 +75,12 @@ jobs:
     
     steps:
       - run: echo ${{needs.build.outputs.artifact-path}}
-      
+  
   test-run:
     runs-on: ubuntu-latest
     needs: build
     steps:
+    # This is the other half of the upload 
     - name: Download candidate artifacts
       uses: actions/download-artifact@v3
       with:
@@ -85,7 +93,7 @@ jobs:
         chmod +x ./test-script.sh
         ./test-script.sh ${{ needs.build.outputs.artifact-path }} "$ARGS"
 
-
+  # This is a caller job meaning it will call another workflow from outside of this file or even repo
   count-args:
     runs-on: ubuntu-latest
     steps:
@@ -95,14 +103,17 @@ jobs:
         arguments-to-count: ${{ github.event.inputs.myValues }}
     - run: echo
     - shell: bash
+      # The exit 1 is used for a test
       run: |
         echo argument count is ${{ steps.report-count.outputs.arg-count }}
         exit 1
-        
+      
+    # We weren't exactly able to figure this one out which is passing arguements to another workflow
   create-issue-on-failure:
   
     permissions:
       issues: write
+    #this means it is relying on other jobs to finish before triggering
     needs: [test-run, count-args]
     if: always() && failure()
     uses: ./.github/workflows/create-failure-issue.yml
